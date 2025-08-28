@@ -1,0 +1,13 @@
+<svg width="192" height="192" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Dark Background Circle -->
+            <circle cx="12" cy="12" r="11.5" fill="#2D3748"/>
+            <circle cx="12" cy="12" r="11" stroke="#4A5568" stroke-width="1"/>
+        
+            <!-- Bold, two-legged zig-zag arrow -->
+            <g>
+                <!-- This path creates the two upward legs with a slight dip -->
+                <path d="M6 18L12 12L14 14L18 8" stroke="#90CDF4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- This path creates the sharp arrowhead -->
+                <path d="M15 8H18V11" stroke="#90CDF4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+        </svg>
