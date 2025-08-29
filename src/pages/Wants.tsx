@@ -113,7 +113,7 @@ export default function Wants() {
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-500 dark:border-green-400">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Total Wants Budget</h3>
             <p className="text-3xl font-bold text-green-600 dark:text-green-400">₹{wantsAmount.toLocaleString()}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{state.wantsPercent}% of salary</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{state.wantsPercent.toFixed(1)}% of salary</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">

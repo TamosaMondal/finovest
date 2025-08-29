@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
-// Note: PieChart and BarChart were imported but not used, consider removing if not needed.
-import { Plus, Trash2, Download, Upload, AlertTriangle, Info } from 'lucide-react';
+import { Plus, Trash2, Download, Upload, AlertTriangle, Info, X } from 'lucide-react';
 import Papa from 'papaparse';
+import { Toaster, toast } from 'react-hot-toast';
 
 export default function DailyBudget() {
   const { state, dispatch } = useFinance();
@@ -14,11 +14,22 @@ export default function DailyBudget() {
     notes: ''
   });
 
-  const needsAmount = (state.monthlySalary * state.needsPercent) / 100;
-  const wantsAmount = (state.monthlySalary * state.wantsPercent) / 100;
-  const investmentsAmount = (state.monthlySalary * state.investmentsPercent) / 100;
-  const debtRepaymentAmount = (state.monthlySalary * state.debtRepaymentPercent) / 100;
-  const goalContributionsAmount = (state.monthlySalary * state.goalContributionsPercent) / 100;
+  const [showBudgetAlert, setShowBudgetAlert] = useState(false);
+  const [expenseToAdd, setExpenseToAdd] = useState<any | null>(null);
+  const [alertDetails, setAlertDetails] = useState({ 
+    category: '', 
+    budget: 0, 
+    spentSoFar: 0, 
+    newExpenseAmount: 0 
+  });
+
+  const categoryBudgets = {
+    Needs: (state.monthlySalary * state.needsPercent) / 100,
+    Wants: (state.monthlySalary * state.wantsPercent) / 100,
+    Investments: (state.monthlySalary * state.investmentsPercent) / 100,
+    'Debt Repayment': (state.monthlySalary * state.debtRepaymentPercent) / 100,
+    'Goal Contributions': (state.monthlySalary * state.goalContributionsPercent) / 100,
+  };
 
   const currentMonth = new Date().toISOString().slice(0, 7);
   const currentMonthExpenses = state.dailyExpenses.filter(expense => 
@@ -26,21 +37,13 @@ export default function DailyBudget() {
   );
 
   const spentByCategory = {
-    needs: currentMonthExpenses.filter(e => e.category === 'Needs').reduce((sum, e) => sum + e.amount, 0),
-    wants: currentMonthExpenses.filter(e => e.category === 'Wants').reduce((sum, e) => sum + e.amount, 0),
-    investments: currentMonthExpenses.filter(e => e.category === 'Investments').reduce((sum, e) => sum + e.amount, 0),
-    debtRepayment: currentMonthExpenses.filter(e => e.category === 'Debt Repayment').reduce((sum, e) => sum + e.amount, 0),
-    goalContributions: currentMonthExpenses.filter(e => e.category === 'Goal Contributions').reduce((sum, e) => sum + e.amount, 0),
+    Needs: currentMonthExpenses.filter(e => e.category === 'Needs').reduce((sum, e) => sum + e.amount, 0),
+    Wants: currentMonthExpenses.filter(e => e.category === 'Wants').reduce((sum, e) => sum + e.amount, 0),
+    Investments: currentMonthExpenses.filter(e => e.category === 'Investments').reduce((sum, e) => sum + e.amount, 0),
+    'Debt Repayment': currentMonthExpenses.filter(e => e.category === 'Debt Repayment').reduce((sum, e) => sum + e.amount, 0),
+    'Goal Contributions': currentMonthExpenses.filter(e => e.category === 'Goal Contributions').reduce((sum, e) => sum + e.amount, 0),
   };
-
-  const remaining = {
-    needs: needsAmount - spentByCategory.needs,
-    wants: wantsAmount - spentByCategory.wants,
-    investments: investmentsAmount - spentByCategory.investments,
-    debtRepayment: debtRepaymentAmount - spentByCategory.debtRepayment,
-    goalContributions: goalContributionsAmount - spentByCategory.goalContributions,
-  };
-
+  
   const getSubcategories = (category: string) => {
     switch (category) {
       case 'Needs':
@@ -57,16 +60,16 @@ export default function DailyBudget() {
         return [];
     }
   };
-
-  const handleAddExpense = () => {
-    if (newExpense.amount > 0 && newExpense.subcategory) {
-      dispatch({
+  
+  const confirmAndAddExpense = (expense: any) => {
+    dispatch({
         type: 'ADD_EXPENSE',
         payload: {
           id: Date.now().toString(),
-          ...newExpense
+          ...expense
         }
       });
+      toast.success('Transaction added!');
       setNewExpense({
         date: new Date().toISOString().split('T')[0],
         category: 'Needs',
@@ -74,11 +77,78 @@ export default function DailyBudget() {
         amount: 0,
         notes: ''
       });
+      setShowBudgetAlert(false);
+      setExpenseToAdd(null);
+  }
+
+  const handleAddExpense = () => {
+    if (newExpense.amount <= 0 || !newExpense.subcategory) {
+        toast.error('Please provide a valid amount and subcategory.');
+        return;
+    }
+
+    let budgetToCheck = -1;
+    let spentSoFar = 0;
+    let budgetScope = newExpense.subcategory; // Default to subcategory name for the alert
+
+    // Determine the budget and current spending based on the category
+    switch (newExpense.category) {
+        case 'Needs':
+        case 'Wants':
+        case 'Investments': {
+            let subcategoryKey: string | undefined;
+            if (newExpense.category === 'Needs') {
+                subcategoryKey = Object.keys(state.needsCategories).find(key => state.needsCategories[key] === newExpense.subcategory);
+                if (subcategoryKey) budgetToCheck = state.needsBreakdown[subcategoryKey] || 0;
+            } else if (newExpense.category === 'Wants') {
+                subcategoryKey = Object.keys(state.wantsCategories).find(key => state.wantsCategories[key] === newExpense.subcategory);
+                if (subcategoryKey) budgetToCheck = state.wantsBreakdown[subcategoryKey] || 0;
+            } else { // Investments
+                subcategoryKey = Object.keys(state.investmentCategories).find(key => state.investmentCategories[key] === newExpense.subcategory);
+                if (subcategoryKey) budgetToCheck = state.investmentAllocation[subcategoryKey] || 0;
+            }
+            
+            if(subcategoryKey === undefined) {
+                confirmAndAddExpense(newExpense);
+                return;
+            }
+
+            spentSoFar = currentMonthExpenses
+                .filter(e => e.category === newExpense.category && e.subcategory === newExpense.subcategory)
+                .reduce((sum, e) => sum + e.amount, 0);
+            break;
+        }
+        case 'Debt Repayment':
+        case 'Goal Contributions': {
+            budgetToCheck = categoryBudgets[newExpense.category];
+            spentSoFar = spentByCategory[newExpense.category];
+            budgetScope = newExpense.category; // For the alert, use the main category name
+            break;
+        }
+        default:
+            confirmAndAddExpense(newExpense);
+            return;
+    }
+
+    const newTotalSpent = spentSoFar + newExpense.amount;
+
+    if (budgetToCheck !== -1 && newTotalSpent > budgetToCheck) {
+        setAlertDetails({
+            category: budgetScope,
+            budget: budgetToCheck,
+            spentSoFar: spentSoFar,
+            newExpenseAmount: newExpense.amount
+        });
+        setExpenseToAdd(newExpense);
+        setShowBudgetAlert(true);
+    } else {
+        confirmAndAddExpense(newExpense);
     }
   };
 
   const handleDeleteExpense = (id: string) => {
     dispatch({ type: 'DELETE_EXPENSE', payload: id });
+    toast.success('Transaction deleted.');
   };
 
   const getAlertLevel = (spent: number, budget: number) => {
@@ -120,6 +190,7 @@ export default function DailyBudget() {
               });
             }
           });
+          toast.success('CSV data imported!');
         }
       });
     }
@@ -127,6 +198,7 @@ export default function DailyBudget() {
   
   return (
     <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
+      <Toaster position="top-center" />
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -157,11 +229,11 @@ export default function DailyBudget() {
         {/* Budget Overview */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
           {[
-            { name: 'Needs', budget: needsAmount, spent: spentByCategory.needs, color: 'blue' },
-            { name: 'Wants', budget: wantsAmount, spent: spentByCategory.wants, color: 'green' },
-            { name: 'Investments', budget: investmentsAmount, spent: spentByCategory.investments, color: 'orange' },
-            { name: 'Debt Repayment', budget: debtRepaymentAmount, spent: spentByCategory.debtRepayment, color: 'red' },
-            { name: 'Goal Contributions', budget: goalContributionsAmount, spent: spentByCategory.goalContributions, color: 'purple' }
+            { name: 'Needs', budget: categoryBudgets.Needs, spent: spentByCategory.Needs, color: 'blue' },
+            { name: 'Wants', budget: categoryBudgets.Wants, spent: spentByCategory.Wants, color: 'green' },
+            { name: 'Investments', budget: categoryBudgets.Investments, spent: spentByCategory.Investments, color: 'orange' },
+            { name: 'Debt Repayment', budget: categoryBudgets['Debt Repayment'], spent: spentByCategory['Debt Repayment'], color: 'red' },
+            { name: 'Goal Contributions', budget: categoryBudgets['Goal Contributions'], spent: spentByCategory['Goal Contributions'], color: 'purple' }
           ].map(({ name, budget, spent, color }) => {
             const alertLevel = getAlertLevel(spent, budget);
             
@@ -195,8 +267,7 @@ export default function DailyBudget() {
             );
           })}
         </div>
-
-        {/* Add New Expense */}
+        
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 transition-colors">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add New Transaction</h2>
           <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
@@ -283,8 +354,6 @@ export default function DailyBudget() {
             </div>
           </div>
         </div>
-
-        {/* Expenses List */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 transition-colors">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Recent Transactions</h2>
           <div className="overflow-x-auto">
@@ -332,6 +401,62 @@ export default function DailyBudget() {
           </div>
         </div>
       </div>
+
+      {/* --- The Budget Alert Modal (Now for Subcategories) --- */}
+      {showBudgetAlert && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md">
+            <div className="flex items-start">
+              <div className="bg-yellow-100 dark:bg-yellow-900/50 p-3 rounded-full mr-4 flex-shrink-0">
+                <AlertTriangle className="h-6 w-6 text-yellow-500 dark:text-yellow-400" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Budget Alert</h2>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
+                  You are about to exceed your budget for **{alertDetails.category}**.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 bg-gray-50 dark:bg-gray-700/50 p-4 rounded-md text-sm space-y-2">
+                <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Budget for {alertDetails.category}:</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-100">₹{alertDetails.budget.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-300">Spent so far:</span>
+                    <span className="font-semibold text-gray-800 dark:text-gray-100">₹{alertDetails.spentSoFar.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t border-gray-200 dark:border-gray-600 pt-2 mt-2">
+                    <span className="text-gray-600 dark:text-gray-300 font-bold">Remaining Balance:</span>
+                    <span className="font-bold text-green-600 dark:text-green-400">
+                      ₹{(alertDetails.budget - alertDetails.spentSoFar).toLocaleString()}
+                    </span>
+                </div>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-4">
+                This new transaction of **₹{alertDetails.newExpenseAmount.toLocaleString()}** will exceed your remaining balance.
+            </p>
+            <p className="text-sm text-red-600 dark:text-red-400 font-semibold mt-1">
+                Your new balance will be ₹{(alertDetails.budget - (alertDetails.spentSoFar + alertDetails.newExpenseAmount)).toLocaleString()}.
+            </p>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => { setShowBudgetAlert(false); setExpenseToAdd(null); }}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmAndAddExpense(expenseToAdd)}
+                className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+              >
+                Proceed Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

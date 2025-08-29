@@ -113,7 +113,7 @@ export default function Needs() {
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-blue-500 dark:border-blue-400">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Total Needs Budget</h3>
             <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">₹{needsAmount.toLocaleString()}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{state.needsPercent}% of salary</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{state.needsPercent.toFixed(1)}% of salary</p>
           </div>
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 border-green-500 dark:border-green-400">

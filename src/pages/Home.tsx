@@ -54,8 +54,8 @@ export default function Home() {
   const quickActions = [
     { title: 'Daily Budget', icon: DollarSign, path: '/daily-budget', color: 'bg-blue-500', description: 'Track daily expenses' },
     { title: 'Budget Setup', icon: Settings, path: '/budget-setup', color: 'bg-purple-500', description: 'Configure allocations' },
-    { title: 'Wants Breakdown', icon: Wallet, path: '/wants', color: 'bg-green-600', description: 'Manage wants budget' },
     { title: 'Needs Breakdown', icon: Target, path: '/needs', color: 'bg-blue-600', description: 'Manage needs budget' },
+    { title: 'Wants Breakdown', icon: Wallet, path: '/wants', color: 'bg-green-600', description: 'Manage wants budget' },
     { title: 'Investments', icon: TrendingUp, path: '/investments', color: 'bg-orange-500', description: 'Manage investments' },
     { title: 'Returns', icon: BarChart3, path: '/returns', color: 'bg-red-500', description: 'View returns analysis' },
     { title: 'Monthly Overview', icon: Calendar, path: '/monthly-overview', color: 'bg-teal-500', description: 'View monthly budgets' },
@@ -106,7 +106,7 @@ export default function Home() {
                 <Target className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Needs ({state.needsPercent}%)</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Needs ({state.needsPercent.toFixed(1)}%)</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">₹{needsAmount.toLocaleString()}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Remaining: ₹{remaining.needs.toLocaleString()}</p>
               </div>
@@ -119,7 +119,7 @@ export default function Home() {
                 <Wallet className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Wants ({state.wantsPercent}%)</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Wants ({state.wantsPercent.toFixed(1)}%)</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹{wantsAmount.toLocaleString()}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Remaining: ₹{remaining.wants.toLocaleString()}</p>
               </div>
@@ -132,7 +132,7 @@ export default function Home() {
                 <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Investments ({state.investmentsPercent}%)</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Investments ({state.investmentsPercent.toFixed(1)}%)</p>
                 <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">₹{investmentsAmount.toLocaleString()}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Remaining: ₹{remaining.investments.toLocaleString()}</p>
               </div>
