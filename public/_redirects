@@ -1,1 +1,5 @@
-/*    /index.html   200
+# Don’t rewrite requests for static assets
+/assets/*   /assets/:splat   200
+
+# Fallback all other routes to index.html
+/*          /index.html      200
