@@ -9,16 +9,33 @@
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+
+    /* Base background and text colors for light mode */
+    @apply bg-gray-50 text-gray-900;
   }
   
+  /* Dark mode specific styles for the html element */
+  html.dark {
+    @apply bg-gray-900 text-gray-50; /* Apply dark background and light text */
+  }
+
   body {
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
+    /* Ensure body inherits colors from html */
+    @apply bg-inherit text-inherit;
   }
   
   input, textarea, select {
     -webkit-user-select: text;
     user-select: text;
+    /* Basic styling for form elements */
+    @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500;
+  }
+
+  /* Placeholder text styling */
+  input::placeholder, textarea::placeholder {
+    @apply text-gray-400 dark:text-gray-500;
   }
 }
 
@@ -34,5 +51,14 @@
 @layer components {
   .touch-button {
     @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+  }
+}
+
+/* You might want to add some transitions for a smoother theme change */
+@layer utilities {
+  .transition-colors {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
   }
 }

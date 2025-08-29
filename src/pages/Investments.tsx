@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { LineChart, PieChart } from '../components/ChartComponents';
-import { TrendingUp, DollarSign, Percent, Plus, Trash2, Edit2 } from 'lucide-react';
+import { TrendingUp, DollarSign, Percent, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 
 export default function Investments() {
   const { state, dispatch } = useFinance();
@@ -98,7 +98,8 @@ export default function Investments() {
     labels: Object.keys(state.investmentCategories).map(key => state.investmentCategories[key]),
     datasets: [{
       data: Object.keys(state.investmentCategories).map(key => state.investmentAllocation[key] || 0),
-      backgroundColor: ['#3B82F6', '#10B981', '#F59E0B'],
+      backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+      borderColor: ['#1f2937', '#1f2937', '#1f2937', '#1f2937', '#1f2937'], // dark:bg-gray-800
       borderWidth: 2,
     }]
   };
@@ -126,75 +127,74 @@ export default function Investments() {
   const totalAllocation = Object.values(state.investmentAllocation).reduce((sum, val) => sum + val, 0);
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Investment Planning</h1>
-          <p className="text-gray-600">Manage your investment allocation and track long-term growth projections</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Investment Planning</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage your investment allocation and track long-term growth</p>
         </div>
 
         {/* Investment Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-orange-100 mr-4">
-                <DollarSign className="h-6 w-6 text-orange-600" />
+              <div className="p-3 rounded-full bg-orange-100 dark:bg-orange-900/50 mr-4">
+                <DollarSign className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Monthly Investment</p>
-                <p className="text-2xl font-bold text-orange-600">₹{investmentAmount.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Monthly Investment</p>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">₹{investmentAmount.toLocaleString()}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 mr-4">
-                <TrendingUp className="h-6 w-6 text-green-600" />
+              <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/50 mr-4">
+                <TrendingUp className="h-6 w-6 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Annual Investment</p>
-                <p className="text-2xl font-bold text-green-600">₹{annualInvestment.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Annual Investment</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹{annualInvestment.toLocaleString()}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 mr-4">
-                <Percent className="h-6 w-6 text-blue-600" />
+              <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/50 mr-4">
+                <Percent className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Expected Return</p>
-                <p className="text-2xl font-bold text-blue-600">{state.investmentReturns.overall}%</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Expected Return</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{state.investmentReturns.overall}%</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
             <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 mr-4">
-                <TrendingUp className="h-6 w-6 text-purple-600" />
+              <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/50 mr-4">
+                <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">10Y Value</p>
-                <p className="text-2xl font-bold text-purple-600">₹{(projections[0].nominal / 10000000).toFixed(1)}Cr</p>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-300">10Y Value</p>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">₹{(projections[0].nominal / 10000000).toFixed(1)}Cr</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Investment Allocation */}
         {/* Add New Category */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Add New Investment Category</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Add New Investment Category</h2>
           <div className="flex space-x-3">
             <input
               type="text"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Enter investment type (e.g., Gold, Real Estate, Bonds)"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               onKeyPress={(e) => e.key === 'Enter' && addCategory()}
             />
             <button
@@ -206,9 +206,10 @@ export default function Investments() {
             </button>
           </div>
         </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Investment Allocation</h2>
+        
+        {/* Investment Allocation */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Investment Allocation</h2>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
@@ -220,7 +221,7 @@ export default function Investments() {
                   const percentage = totalAllocation > 0 ? ((amount / totalAllocation) * 100) : 0;
                   
                   return (
-                    <div key={key} className="border border-gray-200 rounded-lg p-4">
+                    <div key={key} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex justify-between items-center mb-2">
                         {editingCategory === key ? (
                           <div className="flex items-center space-x-2 flex-1">
@@ -228,36 +229,36 @@ export default function Investments() {
                               type="text"
                               value={editingName}
                               onChange={(e) => setEditingName(e.target.value)}
-                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                               onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
                             />
-                            <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
-                              <Plus className="h-4 w-4" />
+                            <button onClick={saveEdit} className="text-green-600 hover:text-green-800 dark:hover:text-green-400">
+                              <Check className="h-4 w-4" />
                             </button>
-                            <button onClick={cancelEdit} className="text-red-600 hover:text-red-800">
-                              <Trash2 className="h-4 w-4" />
+                            <button onClick={cancelEdit} className="text-red-600 hover:text-red-800 dark:hover:text-red-400">
+                              <X className="h-4 w-4" />
                             </button>
                           </div>
                         ) : (
                           <>
                             <div className="flex items-center space-x-2">
-                              <label className="text-sm font-medium text-gray-700">{label}</label>
+                              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">{label}</label>
                               <button
                                 onClick={() => startEditing(key)}
-                                className="text-blue-600 hover:text-blue-800"
+                                className="text-blue-600 hover:text-blue-800 dark:hover:text-blue-400"
                               >
                                 <Edit2 className="h-3 w-3" />
                               </button>
                               {Object.keys(state.investmentCategories).length > 1 && (
                                 <button
                                   onClick={() => removeCategory(key)}
-                                  className="text-red-600 hover:text-red-800"
+                                  className="text-red-600 hover:text-red-800 dark:hover:text-red-400"
                                 >
                                   <Trash2 className="h-3 w-3" />
                                 </button>
                               )}
                             </div>
-                            <span className="text-sm text-gray-500">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
                               {percentage.toFixed(1)}%
                             </span>
                           </>
@@ -267,42 +268,42 @@ export default function Investments() {
                         type="number"
                         value={amount}
                         onChange={(e) => handleAllocationChange(key, parseFloat(e.target.value) || 0)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         placeholder="Enter amount"
                       />
                       <div className="mt-2 flex justify-between text-sm">
-                        <span className="text-gray-600">Expected Return:</span>
+                        <span className="text-gray-600 dark:text-gray-400">Expected Return:</span>
                         <div className="flex items-center space-x-2">
                           <input
                             type="number"
                             value={returnRate}
                             onChange={(e) => handleReturnsChange(key, parseFloat(e.target.value) || 0)}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                            className="w-16 px-2 py-1 border border-gray-300 rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                             step="0.1"
                           />
-                          <span className="text-gray-600">%</span>
+                          <span className="text-gray-600 dark:text-gray-400">%</span>
                         </div>
                       </div>
                     </div>
                   );
                 })}
 
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex justify-between text-sm">
-                    <span className="font-medium text-gray-700">Total Allocation:</span>
-                    <span className="font-medium">₹{totalAllocation.toLocaleString()}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">Total Allocation:</span>
+                    <span className="font-medium dark:text-gray-100">₹{totalAllocation.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm mt-2">
-                    <span className="font-medium text-gray-700">Overall Expected Return:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">Overall Expected Return:</span>
                     <div className="flex items-center space-x-2">
                       <input
                         type="number"
                         value={state.investmentReturns.overall}
                         onChange={(e) => handleReturnsChange('overall', parseFloat(e.target.value) || 0)}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-16 px-2 py-1 border border-gray-300 rounded text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                         step="0.1"
                       />
-                      <span className="text-gray-600">%</span>
+                      <span className="text-gray-600 dark:text-gray-400">%</span>
                     </div>
                   </div>
                 </div>
@@ -310,7 +311,7 @@ export default function Investments() {
             </div>
 
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Allocation Breakdown</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Allocation Breakdown</h3>
               <div className="h-64">
                 <PieChart data={allocationData} />
               </div>
@@ -319,38 +320,38 @@ export default function Investments() {
         </div>
 
         {/* Projections Table */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Investment Growth Projections</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Investment Growth Projections</h2>
           
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Years</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Invested</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nominal Value</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Real Value</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Real Returns</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Years</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Total Invested</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nominal Value</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Real Value</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Real Returns</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {projections.map(({ years, nominal, real }) => {
                   const totalInvested = annualInvestment * years;
                   const realReturns = real - totalInvested;
                   
                   return (
-                    <tr key={years} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{years}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <tr key={years} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{years}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         ₹{(totalInvested / 10000000).toFixed(2)}Cr
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 dark:text-green-400">
                         ₹{(nominal / 10000000).toFixed(2)}Cr
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400">
                         ₹{(real / 10000000).toFixed(2)}Cr
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-orange-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-orange-600 dark:text-orange-400">
                         ₹{(realReturns / 10000000).toFixed(2)}Cr
                       </td>
                     </tr>
@@ -362,12 +363,12 @@ export default function Investments() {
         </div>
 
         {/* Growth Chart */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Investment Growth Over Time</h2>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Investment Growth Over Time</h2>
           <div className="h-80">
             <LineChart data={growthProjectionData} />
           </div>
-          <p className="text-sm text-gray-500 mt-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center">
             Values shown in crores (₹). Real values are adjusted for {state.inflationRate}% inflation.
           </p>
         </div>

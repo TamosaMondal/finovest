@@ -1,14 +1,31 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode, useState } from 'react';
 import { useAuth } from './AuthContext';
-// Import Firestore functions
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+// Import Firestore functions - onSnapshot is added for real-time updates
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase'; // Make sure this path is correct
 
-// --- TYPES (No changes needed) ---
+// --- DATA STRUCTURES ---
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  savedAmount: number;
+  deadline: string;
+}
+
+export interface Debt {
+    id: string;
+    name: string;
+    originalAmount: number;
+    totalAmount: number;
+    interestRate: number;
+    minimumPayment: number;
+}
+
 export interface DailyExpense {
   id: string;
   date: string;
-  category: 'Needs' | 'Wants' | 'Investments';
+  category: 'Needs' | 'Wants' | 'Investments' | 'Debt Repayment' | 'Goal Contributions';
   subcategory: string;
   amount: number;
   notes: string;
@@ -38,11 +55,14 @@ export interface InvestmentReturns {
   [key: string]: number;
   overall: number;
 }
+
 export interface FinanceState {
   monthlySalary: number;
   needsPercent: number;
   wantsPercent: number;
   investmentsPercent: number;
+  debtRepaymentPercent: number;
+  goalContributionsPercent: number;
   inflationRate: number;
   incrementRates: {
     period1: number;
@@ -61,6 +81,9 @@ export interface FinanceState {
   investmentCategories: { [key: string]: string };
   investmentAllocation: InvestmentAllocation;
   investmentReturns: InvestmentReturns;
+  goals: FinancialGoal[];
+  debts: Debt[];
+  notes: string[]; // 💡 ADDED: State for notes
 }
 export interface MonthlySnapshot {
   month: string;
@@ -69,6 +92,8 @@ export interface MonthlySnapshot {
   needsSpent: number;
   wantsSpent: number;
   investmentsSpent: number;
+  debtRepaymentSpent: number;
+  goalContributionsSpent: number;
   savings: number;
   expenseCount: number;
   createdAt: string;
@@ -82,9 +107,10 @@ export interface YearlySnapshot {
   monthsTracked: number;
   createdAt: string;
 }
-type FinanceAction = 
+
+type FinanceAction =
   | { type: 'UPDATE_SALARY'; payload: number }
-  | { type: 'UPDATE_ALLOCATION'; payload: { needs: number; wants: number; investments: number } }
+  | { type: 'UPDATE_ALLOCATION'; payload: { needs: number; wants: number; investments: number; debtRepayment: number; goalContributions: number } }
   | { type: 'UPDATE_INFLATION'; payload: number }
   | { type: 'ADD_EXPENSE'; payload: DailyExpense }
   | { type: 'UPDATE_EXPENSE'; payload: DailyExpense }
@@ -102,97 +128,162 @@ type FinanceAction =
   | { type: 'REMOVE_INVESTMENT_CATEGORY'; payload: string }
   | { type: 'CREATE_MONTHLY_SNAPSHOT'; payload: string }
   | { type: 'CREATE_YEARLY_SNAPSHOT'; payload: number }
-  | { type: 'LOAD_DATA'; payload: FinanceState };
+  | { type: 'LOAD_DATA'; payload: FinanceState }
+  | { type: 'ADD_GOAL'; payload: FinancialGoal }
+  | { type: 'UPDATE_GOAL'; payload: FinancialGoal }
+  | { type: 'DELETE_GOAL'; payload: string }
+  | { type: 'ADD_DEBT'; payload: Debt }
+  | { type: 'UPDATE_DEBT'; payload: Debt }
+  | { type: 'DELETE_DEBT'; payload: string }
+  | { type: 'SET_NOTES'; payload: string[] }; // 💡 ADDED: Action for notes
 
-// --- INITIAL STATE (No changes needed) ---
+// --- INITIAL STATE ---
 const initialState: FinanceState = {
   monthlySalary: 36300,
-  needsPercent: 47,
-  wantsPercent: 30.5,
-  investmentsPercent: 22.5,
+  needsPercent: 45,
+  wantsPercent: 25,
+  investmentsPercent: 20,
+  debtRepaymentPercent: 10,
+  goalContributionsPercent: 0,
   inflationRate: 6,
   incrementRates: { period1: 10, period2: 8, period3: 6 },
   dailyExpenses: [],
   currentMonth: new Date().toISOString().slice(0, 7),
   monthlySnapshots: [],
   yearlySnapshots: [],
-  budgetYears: [{ year: 2025, startingSalary: 36300, increment: 10, endingSalary: 39930, needs: 17079, wants: 11079, investments: 8079, needsPercent: 47, wantsPercent: 30.5, investmentsPercent: 22.2 }],
+  budgetYears: [],
   needsCategories: { rent: 'Rent & Housing', food: 'Food & Groceries', utilities: 'Utilities', transport: 'Transportation', healthcare: 'Healthcare', others: 'Others' },
-  wantsCategories: { savingsAccount: 'Savings Account', emi: 'EMI & Loans', entertainment: 'Entertainment', shopping: 'Shopping', dining: 'Dining Out', others: 'Others' },
+  wantsCategories: { savingsAccount: 'Savings Account', entertainment: 'Entertainment', shopping: 'Shopping', dining: 'Dining Out', others: 'Others' },
   investmentCategories: { nifty50: 'Nifty50', midCap: 'Mid-cap', smallCap: 'Small-cap' },
   needsBreakdown: { rent: 7969.20, food: 3410.23, utilities: 1707.90, transport: 1707.90, healthcare: 1707.90, others: 575.87 },
-  wantsBreakdown: { savingsAccount: 3682.76, emi: 3682.76, entertainment: 1841.38, shopping: 1841.38, dining: 1841.38, others: 1841.38 },
+  wantsBreakdown: { savingsAccount: 0, entertainment: 1841.38, shopping: 1841.38, dining: 1841.38, others: 1841.38 },
   investmentAllocation: { nifty50: 4847.40, midCap: 2019.75, smallCap: 1211.85 },
-  investmentReturns: { nifty50: 12, midCap: 15, smallCap: 18, overall: 15 }
+  investmentReturns: { nifty50: 12, midCap: 15, smallCap: 18, overall: 15 },
+  goals: [],
+  debts: [],
+  notes: [], // 💡 ADDED: Initialize notes
 };
 
-// --- REDUCER (Logic for snapshots added) ---
+// --- REDUCER ---
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
-    case 'UPDATE_SALARY': {
-      const newSalary = action.payload;
-      const needs = (newSalary * state.needsPercent) / 100;
-      const wants = (newSalary * state.wantsPercent) / 100;
-      const investments = (newSalary * state.investmentsPercent) / 100;
-      const needsKeys = Object.keys(state.needsBreakdown);
-      const wantsKeys = Object.keys(state.wantsBreakdown);
-      const investmentKeys = Object.keys(state.investmentAllocation);
-      const needsTotal = Object.values(state.needsBreakdown).reduce((sum, val) => sum + val, 0);
-      const wantsTotal = Object.values(state.wantsBreakdown).reduce((sum, val) => sum + val, 0);
-      const investmentTotal = Object.values(state.investmentAllocation).reduce((sum, val) => sum + val, 0);
+    // 💡 ADDED: Case to handle setting notes
+    case 'SET_NOTES':
       return {
         ...state,
-        monthlySalary: newSalary,
-        needsBreakdown: { ...needsKeys.reduce((acc, key) => ({ ...acc, [key]: needsTotal > 0 ? (state.needsBreakdown[key] / needsTotal) * needs : needs / needsKeys.length }), {}) },
-        wantsBreakdown: { ...wantsKeys.reduce((acc, key) => ({ ...acc, [key]: wantsTotal > 0 ? (state.wantsBreakdown[key] / wantsTotal) * wants : wants / wantsKeys.length }), {}) },
-        investmentAllocation: { ...investmentKeys.reduce((acc, key) => ({ ...acc, [key]: investmentTotal > 0 ? (state.investmentAllocation[key] / investmentTotal) * investments : investments / investmentKeys.length }), {}) }
+        notes: action.payload,
       };
+
+    // ... (All your other cases remain unchanged)
+    case 'ADD_EXPENSE': {
+      const newExpense = action.payload;
+      const newExpenses = [...state.dailyExpenses, newExpense];
+      let newGoals = state.goals;
+      let newDebts = state.debts;
+
+      if (newExpense.subcategory === 'Savings Account' && state.goals.length > 0) {
+        const firstGoal = { ...state.goals[0] };
+        firstGoal.savedAmount = (firstGoal.savedAmount || 0) + newExpense.amount;
+        newGoals = state.goals.map(g => g.id === firstGoal.id ? firstGoal : g);
+      }
+
+      if (newExpense.category === 'Debt Repayment') {
+          const debtToUpdate = state.debts.find(d => d.name === newExpense.subcategory);
+          if (debtToUpdate) {
+              const updatedDebt = { ...debtToUpdate, totalAmount: debtToUpdate.totalAmount - newExpense.amount };
+              newDebts = state.debts.map(d => d.id === updatedDebt.id ? updatedDebt : d);
+          }
+      } else if (newExpense.category === 'Goal Contributions') {
+        const goalToUpdate = state.goals.find(g => g.name === newExpense.subcategory);
+        if (goalToUpdate) {
+            const updatedGoal = { ...goalToUpdate, savedAmount: (goalToUpdate.savedAmount || 0) + newExpense.amount };
+            newGoals = state.goals.map(g => g.id === updatedGoal.id ? updatedGoal : g);
+        }
+      }
+
+      return { ...state, dailyExpenses: newExpenses, goals: newGoals, debts: newDebts };
     }
     case 'UPDATE_ALLOCATION': {
-      const { needs, wants, investments } = action.payload;
-      const salary = state.monthlySalary;
-      const needsAmount = (salary * needs) / 100;
-      const wantsAmount = (salary * wants) / 100;
-      const investmentsAmount = (salary * investments) / 100;
-      const needsKeys = Object.keys(state.needsBreakdown);
-      const wantsKeys = Object.keys(state.wantsBreakdown);
-      const investmentKeys = Object.keys(state.investmentAllocation);
-      const needsTotal = Object.values(state.needsBreakdown).reduce((sum, val) => sum + val, 0);
-      const wantsTotal = Object.values(state.wantsBreakdown).reduce((sum, val) => sum + val, 0);
-      const investmentTotal = Object.values(state.investmentAllocation).reduce((sum, val) => sum + val, 0);
+      const { needs, wants, investments, debtRepayment, goalContributions } = action.payload;
       return {
         ...state,
         needsPercent: needs,
         wantsPercent: wants,
         investmentsPercent: investments,
-        needsBreakdown: { ...needsKeys.reduce((acc, key) => ({ ...acc, [key]: needsTotal > 0 ? (state.needsBreakdown[key] / needsTotal) * needsAmount : needsAmount / needsKeys.length }), {}) },
-        wantsBreakdown: { ...wantsKeys.reduce((acc, key) => ({ ...acc, [key]: wantsTotal > 0 ? (state.wantsBreakdown[key] / wantsTotal) * wantsAmount : wantsAmount / wantsKeys.length }), {}) },
-        investmentAllocation: { ...investmentKeys.reduce((acc, key) => ({ ...acc, [key]: investmentTotal > 0 ? (state.investmentAllocation[key] / investmentTotal) * investmentsAmount : investmentsAmount / investmentKeys.length }), {}) }
+        debtRepaymentPercent: debtRepayment,
+        goalContributionsPercent: goalContributions,
       };
     }
-    case 'ADD_EXPENSE':
-      return { ...state, dailyExpenses: [...state.dailyExpenses, action.payload] };
+    case 'CREATE_MONTHLY_SNAPSHOT': {
+        const monthToSnapshot = action.payload;
+        const expensesForMonth = state.dailyExpenses.filter(e => e.date.startsWith(monthToSnapshot));
+        const needsSpent = expensesForMonth.filter(e => e.category === 'Needs').reduce((sum, e) => sum + e.amount, 0);
+        const wantsSpent = expensesForMonth.filter(e => e.category === 'Wants').reduce((sum, e) => sum + e.amount, 0);
+        const investmentsSpent = expensesForMonth.filter(e => e.category === 'Investments').reduce((sum, e) => sum + e.amount, 0);
+        const debtRepaymentSpent = expensesForMonth.filter(e => e.category === 'Debt Repayment').reduce((sum, e) => sum + e.amount, 0);
+        const goalContributionsSpent = expensesForMonth.filter(e => e.category === 'Goal Contributions').reduce((sum, e) => sum + e.amount, 0);
+        const totalExpenses = needsSpent + wantsSpent + investmentsSpent + debtRepaymentSpent + goalContributionsSpent;
+        const savings = state.monthlySalary - totalExpenses;
+        const newSnapshot: MonthlySnapshot = {
+          month: monthToSnapshot,
+          salary: state.monthlySalary,
+          totalExpenses,
+          needsSpent,
+          wantsSpent,
+          investmentsSpent,
+          debtRepaymentSpent,
+          goalContributionsSpent,
+          savings,
+          expenseCount: expensesForMonth.length,
+          createdAt: new Date().toISOString(),
+        };
+        const otherSnapshots = state.monthlySnapshots.filter(s => s.month !== monthToSnapshot);
+        return { ...state, monthlySnapshots: [...otherSnapshots, newSnapshot] };
+    }
+    case 'ADD_DEBT': {
+        const newDebt = { ...action.payload, originalAmount: action.payload.totalAmount };
+        return { ...state, debts: [...state.debts, newDebt] };
+    }
+    case 'UPDATE_DEBT': {
+        const originalDebt = state.debts.find(d => d.id === action.payload.id);
+        const updatedDebt = { ...action.payload, originalAmount: originalDebt?.originalAmount || action.payload.totalAmount };
+        return { ...state, debts: state.debts.map(d => d.id === action.payload.id ? updatedDebt : d) };
+    }
+    case 'UPDATE_SALARY': {
+      const newSalary = action.payload;
+      const needsAllocated = (newSalary * state.needsPercent) / 100;
+      const wantsAllocated = (newSalary * state.wantsPercent) / 100;
+      const investmentsAllocated = (newSalary * state.investmentsPercent) / 100;
+      const needsKeys = Object.keys(state.needsBreakdown);
+      const wantsKeys = Object.keys(state.wantsBreakdown);
+      const investmentKeys = Object.keys(state.investmentAllocation);
+      const needsTotalCurrent = Object.values(state.needsBreakdown).reduce((sum, val) => sum + val, 0);
+      const wantsTotalCurrent = Object.values(state.wantsBreakdown).reduce((sum, val) => sum + val, 0);
+      const investmentTotalCurrent = Object.values(state.investmentAllocation).reduce((sum, val) => sum + val, 0);
+      return {
+        ...state,
+        monthlySalary: newSalary,
+        needsBreakdown: { ...needsKeys.reduce((acc, key) => ({ ...acc, [key]: needsTotalCurrent > 0 ? (state.needsBreakdown[key] / needsTotalCurrent) * needsAllocated : needsAllocated / needsKeys.length }), {}) },
+        wantsBreakdown: { ...wantsKeys.reduce((acc, key) => ({ ...acc, [key]: wantsTotalCurrent > 0 ? (state.wantsBreakdown[key] / wantsTotalCurrent) * wantsAllocated : wantsAllocated / wantsKeys.length }), {}) },
+        investmentAllocation: { ...investmentKeys.reduce((acc, key) => ({ ...acc, [key]: investmentTotalCurrent > 0 ? (state.investmentAllocation[key] / investmentTotalCurrent) * investmentsAllocated : investmentsAllocated / investmentKeys.length }), {}) }
+      };
+    }
     case 'UPDATE_EXPENSE':
       return { ...state, dailyExpenses: state.dailyExpenses.map(expense => expense.id === action.payload.id ? action.payload : expense) };
     case 'DELETE_EXPENSE':
       return { ...state, dailyExpenses: state.dailyExpenses.filter(expense => expense.id !== action.payload) };
-    
-    // **START OF CORRECTION**
     case 'UPDATE_BUDGET_YEAR': {
       const updatedYear = action.payload;
       const yearExists = state.budgetYears.some(year => year.year === updatedYear.year);
-
       return {
         ...state,
         budgetYears: yearExists
-          ? state.budgetYears.map(year => 
+          ? state.budgetYears.map(year =>
               year.year === updatedYear.year ? updatedYear : year
             )
           : [...state.budgetYears, updatedYear],
       };
     }
-    // **END OF CORRECTION**
-
     case 'UPDATE_NEEDS_BREAKDOWN':
       return { ...state, needsBreakdown: action.payload };
     case 'UPDATE_WANTS_BREAKDOWN':
@@ -224,29 +315,6 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
       delete newInvestmentReturns[action.payload];
       return { ...state, investmentCategories: remainingInvestmentCategories, investmentAllocation: remainingInvestmentAllocation, investmentReturns: newInvestmentReturns };
     }
-    case 'CREATE_MONTHLY_SNAPSHOT': {
-      const monthToSnapshot = action.payload;
-      const expensesForMonth = state.dailyExpenses.filter(e => e.date.startsWith(monthToSnapshot));
-      if (expensesForMonth.length === 0) return state;
-      const needsSpent = expensesForMonth.filter(e => e.category === 'Needs').reduce((sum, e) => sum + e.amount, 0);
-      const wantsSpent = expensesForMonth.filter(e => e.category === 'Wants').reduce((sum, e) => sum + e.amount, 0);
-      const investmentsSpent = expensesForMonth.filter(e => e.category === 'Investments').reduce((sum, e) => sum + e.amount, 0);
-      const totalExpenses = needsSpent + wantsSpent + investmentsSpent;
-      const savings = state.monthlySalary - totalExpenses;
-      const newSnapshot: MonthlySnapshot = {
-        month: monthToSnapshot,
-        salary: state.monthlySalary,
-        totalExpenses,
-        needsSpent,
-        wantsSpent,
-        investmentsSpent,
-        savings,
-        expenseCount: expensesForMonth.length,
-        createdAt: new Date().toISOString(),
-      };
-      const otherSnapshots = state.monthlySnapshots.filter(s => s.month !== monthToSnapshot);
-      return { ...state, monthlySnapshots: [...otherSnapshots, newSnapshot] };
-    }
     case 'CREATE_YEARLY_SNAPSHOT': {
         const yearToSnapshot = action.payload;
         const monthsForYear = state.monthlySnapshots.filter(s => s.month.startsWith(yearToSnapshot.toString()));
@@ -266,8 +334,20 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
         const otherYearlySnapshots = state.yearlySnapshots.filter(s => s.year !== yearToSnapshot);
         return { ...state, yearlySnapshots: [...otherYearlySnapshots, newYearlySnapshot] };
     }
+    case 'ADD_GOAL':
+        return { ...state, goals: [...state.goals, { ...action.payload, savedAmount: 0 }] };
+    case 'UPDATE_GOAL':
+        return { ...state, goals: state.goals.map(g => g.id === action.payload.id ? action.payload : g) };
+    case 'DELETE_GOAL':
+        return { ...state, goals: state.goals.filter(g => g.id !== action.payload) };
+    case 'DELETE_DEBT':
+        return { ...state, debts: state.debts.filter(d => d.id !== action.payload) };
     case 'LOAD_DATA':
-      return action.payload;
+      return {
+        ...initialState, // Start with a clean slate to avoid merging issues
+        ...action.payload,
+        notes: action.payload.notes || [], // Ensure notes is always an array
+      };
     default:
       return state;
   }
@@ -276,14 +356,16 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
 const FinanceContext = createContext<{
   state: FinanceState;
   dispatch: React.Dispatch<FinanceAction>;
+  updateNotesInDatabase: (notes: string[]) => Promise<void>; // 💡 ADDED: Function to save notes
 } | undefined>(undefined);
 
-// --- PROVIDER (Automation logic added) ---
+// --- PROVIDER ---
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
   const [state, dispatch] = useReducer(financeReducer, initialState);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
+  // Effect for loading main finance data
   useEffect(() => {
     const loadDataFromFirestore = async () => {
       if (currentUser) {
@@ -292,9 +374,12 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
           const docSnap = await getDoc(userFinanceDocRef);
           if (docSnap.exists()) {
             dispatch({ type: 'LOAD_DATA', payload: docSnap.data() as FinanceState });
+          } else {
+            dispatch({ type: 'LOAD_DATA', payload: initialState });
           }
         } catch (error) {
           console.error("Error loading finance data:", error);
+          dispatch({ type: 'LOAD_DATA', payload: initialState });
         } finally {
           setIsDataLoaded(true);
         }
@@ -306,43 +391,90 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     loadDataFromFirestore();
   }, [currentUser]);
 
+  // 💡 --- START: NOTES LOGIC --- 💡
+  // Effect for loading and listening to notes in real-time
+  useEffect(() => {
+    if (currentUser) {
+      const userNotesDocRef = doc(db, 'userNotes', currentUser.uid);
+
+      // onSnapshot listens for real-time updates to the notes document
+      const unsubscribe = onSnapshot(userNotesDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          dispatch({ type: 'SET_NOTES', payload: docSnap.data().notes || [] });
+        } else {
+          // If the document doesn't exist, initialize notes in the state
+          dispatch({ type: 'SET_NOTES', payload: [] });
+        }
+      });
+
+      // Cleanup the listener when the component unmounts or user changes
+      return () => unsubscribe();
+    }
+  }, [currentUser]);
+
+  // Function to save notes to Firestore
+  const updateNotesInDatabase = async (newNotes: string[]) => {
+    if (currentUser) {
+      try {
+        const userNotesDocRef = doc(db, 'userNotes', currentUser.uid);
+        // setDoc will create the document if it doesn't exist, or overwrite it if it does.
+        await setDoc(userNotesDocRef, { notes: newNotes });
+      } catch (error) {
+        console.error("Error saving notes to Firestore:", error);
+      }
+    }
+  };
+  // 💡 --- END: NOTES LOGIC --- 💡
+
+
+  // Effect for saving main finance data and creating snapshots
   useEffect(() => {
     if (!currentUser || !isDataLoaded) {
       return;
     }
 
     const currentMonth = new Date().toISOString().slice(0, 7);
-    const hasMonthlySnapshot = state.monthlySnapshots.some(s => s.month === currentMonth);
-    if (!hasMonthlySnapshot && state.dailyExpenses.some(e => e.date.startsWith(currentMonth))) {
+    const currentYear = new Date().getFullYear();
+    const expensesForCurrentMonth = state.dailyExpenses.filter(e => e.date.startsWith(currentMonth));
+    const currentMonthSnapshot = state.monthlySnapshots.find(s => s.month === currentMonth);
+
+    if (!currentMonthSnapshot && expensesForCurrentMonth.length > 0) {
+      dispatch({ type: 'CREATE_MONTHLY_SNAPSHOT', payload: currentMonth });
+    } else if (currentMonthSnapshot && currentMonthSnapshot.expenseCount !== expensesForCurrentMonth.length) {
       dispatch({ type: 'CREATE_MONTHLY_SNAPSHOT', payload: currentMonth });
     }
-    
-    const currentYear = new Date().getFullYear();
-    const hasYearlySnapshot = state.yearlySnapshots.some(s => s.year === currentYear);
-    if (!hasYearlySnapshot && state.monthlySnapshots.some(s => s.month.startsWith(currentYear.toString()))) {
+
+    const monthlySnapshotsForCurrentYear = state.monthlySnapshots.filter(s => s.month.startsWith(currentYear.toString()));
+    const currentYearSnapshot = state.yearlySnapshots.find(s => s.year === currentYear);
+
+    if (!currentYearSnapshot && monthlySnapshotsForCurrentYear.length > 0) {
+        dispatch({ type: 'CREATE_YEARLY_SNAPSHOT', payload: currentYear });
+    } else if (currentYearSnapshot && currentYearSnapshot.monthsTracked !== monthlySnapshotsForCurrentYear.length) {
         dispatch({ type: 'CREATE_YEARLY_SNAPSHOT', payload: currentYear });
     }
 
     const saveDataToFirestore = async () => {
       try {
         const userFinanceDocRef = doc(db, 'financeData', currentUser.uid);
-        await setDoc(userFinanceDocRef, state);
+        // We exclude notes from this save operation, as they are handled separately
+        const { notes, ...financeDataToSave } = state;
+        await setDoc(userFinanceDocRef, financeDataToSave);
       } catch (error) {
         console.error("Error saving finance data to Firestore:", error);
       }
     };
-    
+
     saveDataToFirestore();
   }, [state, currentUser, isDataLoaded]);
 
   return (
-    <FinanceContext.Provider value={{ state, dispatch }}>
+    <FinanceContext.Provider value={{ state, dispatch, updateNotesInDatabase }}>
       {children}
     </FinanceContext.Provider>
   );
 }
 
-// --- HOOK (No changes needed) ---
+// --- HOOK ---
 export function useFinance() {
   const context = useContext(FinanceContext);
   if (context === undefined) {
