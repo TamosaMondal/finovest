@@ -37,8 +37,8 @@ export default function BudgetSetup() {
   const investmentsPercent = localSalary > 0 ? ((investmentsAmount / localSalary) * 100) : 0;
   const debtRepaymentPercent = localSalary > 0 ? ((debtRepaymentAmount / localSalary) * 100) : 0;
   const goalContributionsPercent = localSalary > 0 ? ((goalContributionsAmount / localSalary) * 100) : 0;
-  const totalPercent = needsPercent + wantsPercent + investmentsPercent + debtRepaymentPercent + goalContributionsPercent;
   const totalAllocatedAmount = needsAmount + wantsAmount + investmentsAmount + debtRepaymentAmount + goalContributionsAmount;
+  const totalPercent = (totalAllocatedAmount / localSalary) * 100;
   const savingsAccountBalance = localSalary - totalAllocatedAmount;
   
   const handleSave = () => {
@@ -109,7 +109,7 @@ export default function BudgetSetup() {
                       className="w-32 pl-6 pr-2 py-1 border border-gray-300 rounded-md text-sm text-center dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
-                  <span className="w-16 text-right font-bold text-green-800 dark:text-green-200">{state.needsPercent.toFixed(1)}%</span>
+                  <span className="w-16 text-right font-bold text-green-800 dark:text-green-200">{needsPercent.toFixed(1)}%</span>
                 </div>
               </div>
               {/* Wants */}
@@ -126,7 +126,7 @@ export default function BudgetSetup() {
                       className="w-32 pl-6 pr-2 py-1 border border-gray-300 rounded-md text-sm text-center dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
-                  <span className="w-16 text-right font-bold text-yellow-800 dark:text-yellow-300">{state.wantsPercent.toFixed(1)}%</span>
+                  <span className="w-16 text-right font-bold text-yellow-800 dark:text-yellow-300">{wantsPercent.toFixed(1)}%</span>
                 </div>
               </div>
               {/* Investments */}
@@ -143,7 +143,7 @@ export default function BudgetSetup() {
                       className="w-32 pl-6 pr-2 py-1 border border-gray-300 rounded-md text-sm text-center dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
-                  <span className="w-16 text-right font-bold text-indigo-800 dark:text-indigo-200">{state.investmentsPercent.toFixed(1)}%</span>
+                  <span className="w-16 text-right font-bold text-indigo-800 dark:text-indigo-200">{investmentsPercent.toFixed(1)}%</span>
                 </div>
               </div>
               {/* Debt Repayment Input */}
@@ -160,7 +160,7 @@ export default function BudgetSetup() {
                       className="w-32 pl-6 pr-2 py-1 border border-gray-300 rounded-md text-sm text-center dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
-                  <span className="w-16 text-right font-bold text-red-800 dark:text-red-300">{state.debtRepaymentPercent.toFixed(1)}%</span>
+                  <span className="w-16 text-right font-bold text-red-800 dark:text-red-300">{debtRepaymentPercent.toFixed(1)}%</span>
                 </div>
               </div>
               {/* Goal Contributions Input */}
@@ -177,7 +177,7 @@ export default function BudgetSetup() {
                       className="w-32 pl-6 pr-2 py-1 border border-gray-300 rounded-md text-sm text-center dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
                   </div>
-                  <span className="w-16 text-right font-bold text-purple-800 dark:text-purple-300">{state.goalContributionsPercent.toFixed(1)}%
+                  <span className="w-16 text-right font-bold text-purple-800 dark:text-purple-300">{goalContributionsPercent.toFixed(1)}%
 </span>
                 </div>
               </div>
@@ -188,7 +188,7 @@ export default function BudgetSetup() {
           <div className="space-y-2 pt-4">
               <div className="flex justify-between text-sm font-medium text-gray-600 dark:text-gray-400">
                   <span>Total Allocated</span>
-                  <span>{Math.floor(totalPercent)}% of 100%</span> 
+                  <span>{totalPercent.toFixed(1)}% of 100%</span> 
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-4">
                   <div 
